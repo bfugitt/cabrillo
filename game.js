@@ -1,44 +1,69 @@
-// game.js (REVISED)
+// game.js (FINAL REVISED VERSION)
 
 // --- CORE GAME DATA (THE EDUCATIONAL CONTENT) ---
+// Note: Keeping this in game.js for simplicity and easy editing by the teacher.
 const eventData = [
-    // Data remains the same, but the coordinates (x, y) are adjusted for the smaller map size (700x750)
     {
-        location_name: "San Diego Bay",
+        location_name: "San Diego Bay (Initial Contact)",
         x: 380, y: 650, 
         logbook_text: "We entered a port and named it San Miguel. The land is excellent, and we saw signs of people. Morale is high, but we need supplies.",
         question: "Do you approach the local Kumeyaay people to trade for vital supplies, or cautiously sail past?",
         choices: [
-            { text: "Trade Fairly (+10 Supplies, +15 Morale)", supplies_change: 10, morale_change: 15, feedback: "Respectful trade built trust. Morale UP." },
-            { text: "Sail Past (+0 Supplies, -10 Morale)", supplies_change: 0, morale_change: -10, feedback: "The crew worried about resources and lost confidence. Morale DOWN." }
+            { text: "Trade Fairly, offering goods in exchange for water and fresh food.", supplies_change: 10, morale_change: 15, feedback: "Respectful trade built trust and secured more resources. Morale UP." },
+            { text: "Sail Past, avoiding contact to save time and prevent possible conflict.", supplies_change: 0, morale_change: -10, feedback: "The crew worried about resources and lost confidence in leadership. Morale DOWN." }
         ],
         triggered: false
     },
     {
-        location_name: "Santa Catalina Island",
+        location_name: "Santa Catalina Island (Injury)",
         x: 250, y: 400,
-        logbook_text: "The seas are rough. We anchored near an island where the people came out in many canoes and were friendly. A native was injured nearby.",
-        question: "Do you spend valuable supplies and time to treat the injured person?",
+        logbook_text: "The seas are rough. We anchored near an island where the people came out in many canoes and were friendly. A native person was injured nearby.",
+        question: "Do you spend valuable time and medical supplies to treat the injured person?",
         choices: [
-            { text: "Provide Care (-8 Supplies, +20 Morale)", supplies_change: -8, morale_change: 20, feedback: "Showing mercy is a virtue, and the local people offered guidance. Morale HIGH." },
-            { text: "Ignore and Continue (+0 Supplies, -15 Morale)", supplies_change: 0, morale_change: -15, feedback: "The crew lost respect for the mission's values. Morale LOW." }
+            { text: "Provide Care, using limited medical supplies to aid the injured person (SEL).", supplies_change: -8, morale_change: 20, feedback: "Showing mercy is a virtue, and the local people offered guidance. Morale HIGH." },
+            { text: "Ignore and Continue, rationing supplies and time for the journey north.", supplies_change: 0, morale_change: -15, feedback: "The crew felt the action was unchristian and lost respect for the mission. Morale LOW." }
         ],
         triggered: false
     },
+    // --- NEW EVENT 1: Political/Indigenous Relations ---
     {
-        location_name: "Point Conception",
-        x: 100, y: 200,
-        logbook_text: "We encountered a storm so violent we thought we would perish. The wind tore the sails and the waves were enormous.",
-        question: "A harsh storm threatens. Do you: **A)** Risk the narrow coastal channel, or **B)** Go around the treacherous point?",
+        location_name: "San Pedro Bay (Inter-Tribal Conflict)",
+        x: 320, y: 500,
+        logbook_text: "We encountered two different groups of indigenous people who appear to be in conflict over fishing territory near the bay.",
+        question: "How do you respond to the conflict to secure safe passage?",
         choices: [
-            { text: "Risk Channel (-20 Supplies, -5 Morale)", supplies_change: -20, morale_change: -5, feedback: "The risk was high, and the storm damaged supplies. Supplies DOWN." },
-            { text: "Take Long Route (-10 Supplies, +10 Morale)", supplies_change: -10, morale_change: 10, feedback: "The crew felt safer and avoided major storm damage. Morale UP." }
+            { text: "Attempt to mediate a peaceful meeting between the two tribal leaders.", supplies_change: -5, morale_change: 10, feedback: "Diplomacy succeeded, securing safe passage and boosting crew morale." },
+            { text: "Avoid the area entirely and sail far offshore to prevent becoming involved.", supplies_change: 0, morale_change: -5, feedback: "Safety was ensured, but the crew resented wasting time and fuel." }
+        ],
+        triggered: false
+    },
+    // --- NEW EVENT 2: Geographical/Supply Challenge ---
+    {
+        location_name: "Monterey Bay (Fog and Shallow Water)",
+        x: 180, y: 150,
+        logbook_text: "The sea has become shrouded in dense fog, and the coastline is treacherous with shallow sandbars that could beach the vessel.",
+        question: "Navigation is nearly impossible. Do you anchor and wait, or risk pushing through the fog?",
+        choices: [
+            { text: "Anchor Immediately and wait for the fog to clear (Safety First).", supplies_change: -15, morale_change: 15, feedback: "Patience prevented disaster, but waiting consumed valuable supplies. Morale UP." },
+            { text: "Risk pushing through the fog at high speed (Time is Critical).", supplies_change: -5, morale_change: -10, feedback: "The danger was palpable; the ship nearly ran aground, severely damaging morale." }
+        ],
+        triggered: false
+    },
+    // --- NEW EVENT 3: Storm/Structural Damage ---
+    {
+        location_name: "Point Conception (Major Storm Hazard)",
+        x: 150, y: 250,
+        logbook_text: "We encountered a storm so violent we thought we would perish. The wind tore the sails and the hull sustained significant damage.",
+        question: "Structural damage must be addressed immediately. How do you allocate resources?",
+        choices: [
+            { text: "Use vital repair materials to reinforce the damaged hull (Prioritize Structure).", supplies_change: -25, morale_change: 0, feedback: "The ship is safe, but supplies are critically low. Supplies DOWN." },
+            { text: "Only perform minimal repairs and ration food to save materials (Prioritize Food).", supplies_change: -10, morale_change: -20, feedback: "The crew feels unsafe in the un-repaired ship, causing morale to plummet. Morale LOW." }
         ],
         triggered: false
     }
 ];
 
-// --- INTRO SCENE (NEW) ---
+// --- INTRO SCENE ---
 class IntroScene extends Phaser.Scene {
     constructor() {
         super({ key: 'IntroScene' });
@@ -48,25 +73,22 @@ class IntroScene extends Phaser.Scene {
         const width = 700;
         const height = 750;
 
-        // Black background
+        // Greyscale background
         this.add.graphics().fillStyle(0x000000, 1).fillRect(0, 0, width, height);
 
         // Retro Mac Window for Intro Text
         const panelW = 500;
         const panelH = 600;
         
-        // Window Frame
         let graphics = this.add.graphics();
         graphics.fillStyle(0xFFFFFF, 1); 
         graphics.lineStyle(3, 0x000000, 1);
         graphics.fillRect(width/2 - panelW/2, height/2 - panelH/2, panelW, panelH);
         graphics.strokeRect(width/2 - panelW/2, height/2 - panelH/2, panelW, panelH);
 
-        // Title Bar
         graphics.fillStyle(0xCCCCCC, 1); 
         graphics.fillRect(width/2 - panelW/2 + 1, height/2 - panelH/2 + 1, panelW - 2, 25);
         
-        // Content Style
         const textStyle = { 
             fontSize: 16, 
             fill: '#000000', 
@@ -87,7 +109,7 @@ class IntroScene extends Phaser.Scene {
             "RESOURCES:\n" +
             "  🍎 Supplies: Decreases over time and rapidly during storms. Must remain above 0.\n" +
             "  👍 Morale: Affected by decisions. Low morale causes faster resource loss.\n\n" +
-            "OBJECTIVE: Reach the top of the map after triggering all anchor points (📍) before supplies run out."
+            "OBJECTIVE: Reach the top of the map after triggering all anchor points (⚓) before supplies run out."
             
         this.add.text(width/2 - panelW/2 + 20, height/2 - panelH/2 + 40, introText, textStyle);
             
@@ -104,7 +126,6 @@ class IntroScene extends Phaser.Scene {
             this.scene.start('NavigatorScene');
         });
         
-        // Simple hover effect for Mac look
         startButton.on('pointerover', () => startButton.setBackgroundColor('#000000').setFill('#FFFFFF'));
         startButton.on('pointerout', () => startButton.setBackgroundColor('#CCCCCC').setFill('#000000'));
     }
@@ -119,8 +140,8 @@ class NavigatorScene extends Phaser.Scene {
             supplies: 100,
             morale: 100,
             speed: 50,
-            map_height: 750, // Reduced Height
-            map_width: 700  // Reduced Width
+            map_height: 750, 
+            map_width: 700  
         };
         this.eventTriggered = false;
     }
@@ -131,25 +152,23 @@ class NavigatorScene extends Phaser.Scene {
         const width = this.gameData.map_width;
         const height = this.gameData.map_height;
 
-        // --- 1. GAME ENVIRONMENT (Retro Style) ---
-        // Background and Map Graphics (Black/White/Gray for Mac 6)
+        // --- 1. GAME ENVIRONMENT (Greyscale Theme) ---
         this.add.graphics()
             .fillStyle(0x000000, 1) // Ocean/Water Black
             .fillRect(0, 0, width, height)
             .fillStyle(0xCCCCCC, 1) // Land Gray
             .fillTriangle(350, 750, 700, 750, 700, 0)
-            .fillCircle(380, 680, 50); // Baja peninsula start (adjusted coords)
+            .fillCircle(380, 680, 50); 
         
-        // --- 2. PLAYER SPRITE (Emoji/Text with Physics) ---
-        // Ship starts further down for the smaller map
-        this.ship = this.add.text(380, 700, '🚢', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
+        // --- 2. PLAYER SPRITE (Full Ship Emoji) ---
+        // Changed to ⛵ for a better visual representation of a ship.
+        this.ship = this.add.text(380, 700, '⛵', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
         this.physics.add.existing(this.ship); 
         this.ship.body.setDamping(true).setDrag(0.99).setMaxVelocity(100);
 
-        // --- 3. UI/HUD (Retro Mac Style) ---
+        // --- 3. UI/HUD ---
         const macTextStyle = { fontSize: '18px', fill: '#000000', fontFamily: 'Courier New, monospace' };
         
-        // Create a dedicated graphics box for the HUD
         this.add.graphics()
             .fillStyle(0xDDDDDD, 1) 
             .lineStyle(2, 0x000000, 1)
@@ -163,55 +182,54 @@ class NavigatorScene extends Phaser.Scene {
             { fontSize: '18px', fill: '#000000', backgroundColor: '#FFFFFF', padding: { x: 5, y: 2 } })
             .setOrigin(0.5).setDepth(5).setVisible(false);
 
-        // --- 4. NAVIGATION CONTROLS ---
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        // --- 5. EVENT LOCATIONS ---
+        // --- 5. EVENT LOCATIONS (Greyscale Theme) ---
         eventData.forEach(event => {
-            this.add.text(event.x, event.y, '⚓', { fontSize: 24, fill: '#FFFF00' }).setOrigin(0.5);
+            // Anchor icon, now black/white
+            this.add.text(event.x, event.y, '⚓', { fontSize: 24, fill: '#FFFFFF' }).setOrigin(0.5);
         });
 
-        // --- 6. LOGBOOK PANEL (Retro Mac Window) ---
+        // --- 6. LOGBOOK PANEL ---
         this.logbookPanel = this.createLogbookWindow().setDepth(100).setVisible(false);
         this.updateHUD();
     }
     
-    // Custom function to create the Mac System 6 style window
     createLogbookWindow() {
         const width = this.gameData.map_width;
         const height = this.gameData.map_height;
-        const panelW = 450; // Adjusted for smaller canvas
-        const panelH = 350; // Adjusted for smaller canvas
+        const panelW = 450; 
+        const panelH = 350; 
         const x = width / 2;
         const y = height / 2;
 
         let container = this.add.container(x, y);
 
-        // Mac Window Frame
         let graphics = this.add.graphics();
         graphics.fillStyle(0xFFFFFF, 1); 
         graphics.lineStyle(3, 0x000000, 1);
         graphics.fillRect(-panelW / 2, -panelH / 2, panelW, panelH);
         graphics.strokeRect(-panelW / 2, -panelH / 2, panelW, panelH);
 
-        // Title Bar
         graphics.fillStyle(0xCCCCCC, 1); 
         graphics.fillRect(-panelW / 2 + 1, -panelH / 2 + 1, panelW - 2, 25);
         
-        // Title Text
         this.logbookTitle = this.add.text(0, -panelH / 2 + 5, ' CABRILLO\'S LOGBOOK ', { fontSize: 16, fill: '#000000', fontFamily: 'Courier New, monospace' }).setOrigin(0.5);
 
-        // Content (Text Wrapping FIX)
-        const contentWidth = panelW - 40; // 410px width
+        const contentWidth = panelW - 40; 
+        const textStyleBase = { fill: '#000000', fontFamily: 'Courier New, monospace' };
         
         this.logbookText = this.add.text(-panelW/2 + 20, -130, '', { 
-            wordWrap: { width: contentWidth }, // FIX: Text wrapping width
-            fill: '#000000', fontSize: 16, fontFamily: 'Courier New, monospace' 
+            ...textStyleBase,
+            fontSize: 16,
+            wordWrap: { width: contentWidth }
         });
         
         this.questionText = this.add.text(-panelW/2 + 20, 20, '', { 
-            wordWrap: { width: contentWidth }, // FIX: Text wrapping width
-            fill: '#000000', fontSize: 18, fontFamily: 'Courier New, monospace', fontStyle: 'bold' 
+            ...textStyleBase,
+            fontSize: 18, 
+            fontStyle: 'bold',
+            wordWrap: { width: contentWidth }
         });
 
         container.add([graphics, this.logbookTitle, this.logbookText, this.questionText]);
@@ -234,7 +252,6 @@ class NavigatorScene extends Phaser.Scene {
     }
 
     handleInput() {
-        // Input logic remains the same, but is skipped if eventTriggered is true (see update())
         if (this.cursors.up.isDown) {
             this.physics.velocityFromRotation(this.ship.rotation - Math.PI / 2, 200, this.ship.body.acceleration);
         } else {
@@ -292,18 +309,23 @@ class NavigatorScene extends Phaser.Scene {
         this.logbookText.setText(event.logbook_text);
         this.questionText.setText(event.question);
 
-        // Clear and create choice buttons
         if (this.choiceButtons) { this.choiceButtons.destroy(); }
         this.choiceButtons = this.add.group();
 
+        const panelW = 450;
+        const buttonStart = -panelW/2 + 20;
+        const buttonContentWidth = panelW - 40; // Use same content width for buttons
+
         event.choices.forEach((choice, index) => {
-            let buttonY = 80 + (index * 40); // Adjusted button spacing for smaller panel
+            let buttonY = 80 + (index * 40); 
             
+            // FIX: Implement word wrap for the button text
             let buttonText = this.add.text(
-                -this.logbookPanel.getBounds().width/2 + 20, buttonY, 
+                buttonStart, buttonY, 
                 `[ ${choice.text} ]`, { 
                 fontSize: 16, fill: '#000000', backgroundColor: '#DDDDDD',
-                padding: { x: 5, y: 2 }, fontFamily: 'Courier New, monospace'
+                padding: { x: 5, y: 2 }, fontFamily: 'Courier New, monospace',
+                wordWrap: { width: buttonContentWidth } // <-- Crucial Fix for Wrapping
             }).setInteractive({ useHandCursor: true });
             
             buttonText.on('pointerover', () => buttonText.setBackgroundColor('#000000').setFill('#FFFFFF'));
@@ -325,10 +347,9 @@ class NavigatorScene extends Phaser.Scene {
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
         this.time.delayedCall(3000, () => this.feedbackText.setVisible(false));
 
-        // Cleanup and resume
         this.logbookPanel.setVisible(false);
         this.choiceButtons.destroy();
-        this.eventTriggered = false; // Resume game loop
+        this.eventTriggered = false; 
     }
     
     checkGameOver() {
@@ -367,8 +388,8 @@ class NavigatorScene extends Phaser.Scene {
 // --- PHASER GAME INITIALIZATION ---
 const config = {
     type: Phaser.AUTO,
-    width: 700, // FIX: Smaller Width
-    height: 750, // FIX: Smaller Height
+    width: 700, 
+    height: 750, 
     parent: 'game-container', 
     physics: {
         default: 'arcade',
@@ -376,7 +397,7 @@ const config = {
             debug: false 
         }
     },
-    scene: [IntroScene, NavigatorScene] // FIX: Start with IntroScene
+    scene: [IntroScene, NavigatorScene] 
 };
 
 new Phaser.Game(config);
