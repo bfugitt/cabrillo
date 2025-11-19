@@ -1,7 +1,13 @@
-// game.js (FINAL POLISHED VERSION with RESTART)
+// game.js (FINAL FEATURE SET with RANDOM MAP/EVENTS and RESTART FIX)
+
+// --- CONFIGURATION ---
+// Set the number of events required to win the game. 
+// Must be <= the number of available COASTAL_POINTS (9 in this version).
+const REQUIRED_EVENTS = 9; 
 
 // --- CORE GAME DATA ---
-// All possible coastal event locations (x, y coordinates based on 700x750 map)
+// All POSSIBLE coastal/inland event locations (Total of 9 spots)
+// The game will randomly assign the REQUIRED_EVENTS to a subset of these points.
 const COASTAL_POINTS = [
     { x: 380, y: 650, type: 'coastal' }, 
     { x: 300, y: 580, type: 'coastal' },
@@ -14,7 +20,7 @@ const COASTAL_POINTS = [
     { x: 250, y: 80, type: 'inland' },   
 ];
 
-// All event content (randomly assigned to locations on startup)
+// All possible event content (you can add more here)
 const ALL_EVENTS = [
     {
         name: "Bay of San Miguel (Resource Need)", isLand: false,
@@ -101,12 +107,17 @@ const ALL_EVENTS = [
 
 // Combine locations and events randomly
 function initializeEventData() {
-    const shuffledEvents = Phaser.Utils.Array.Shuffle(ALL_EVENTS).slice(0, COASTAL_POINTS.length);
+    // 1. Shuffle the events and pick the number required by the constant
+    const shuffledEvents = Phaser.Utils.Array.Shuffle(ALL_EVENTS).slice(0, REQUIRED_EVENTS);
 
-    const finalEvents = COASTAL_POINTS.map((point, index) => {
+    // 2. Shuffle the points and pick enough locations for the events
+    const shuffledPoints = Phaser.Utils.Array.Shuffle(COASTAL_POINTS).slice(0, REQUIRED_EVENTS);
+
+    // 3. Assign the event data to the randomized location points
+    const finalEvents = shuffledPoints.map((point, index) => {
         const event = shuffledEvents[index];
         return {
-            ...point, 
+            ...point, // x, y, type (coastal/inland)
             location_name: event.name,
             logbook_text: event.logbook_text,
             question: event.question,
@@ -116,6 +127,40 @@ function initializeEventData() {
         };
     });
     return finalEvents;
+}
+
+// --- MAP GENERATION LOGIC ---
+// Creates a randomized, complex polygon for the landmass
+function createRandomCoastline(graphics, width, height) {
+    graphics.fillStyle(0xCCCCCC, 1); 
+    graphics.beginPath();
+    
+    // Start at bottom center
+    graphics.moveTo(width / 2, height);
+    
+    // Go down the right edge
+    graphics.lineTo(width, height);
+    graphics.lineTo(width, 0);
+
+    // Define points for the randomized coastline path on the left
+    const points = [
+        { x: 300, y: 0 }, 
+        { x: 200 + Phaser.Math.Between(-50, 50), y: 50 + Phaser.Math.Between(-20, 20) },
+        { x: 150 + Phaser.Math.Between(-30, 30), y: 150 + Phaser.Math.Between(-30, 30) },
+        { x: 100 + Phaser.Math.Between(-50, 50), y: 250 + Phaser.Math.Between(-50, 50) },
+        { x: 150 + Phaser.Math.Between(-30, 30), y: 350 + Phaser.Math.Between(-30, 30) },
+        { x: 250 + Phaser.Math.Between(-50, 50), y: 450 + Phaser.Math.Between(-50, 50) },
+        { x: 350 + Phaser.Math.Between(-30, 30), y: 550 + Phaser.Math.Between(-30, 30) },
+        { x: 400 + Phaser.Math.Between(-20, 20), y: 650 + Phaser.Math.Between(-20, 20) },
+    ];
+
+    points.forEach(point => {
+        graphics.lineTo(point.x, point.y);
+    });
+
+    graphics.lineTo(width / 2, height); 
+    graphics.closePath();
+    graphics.fill();
 }
 
 
@@ -163,7 +208,7 @@ class IntroScene extends Phaser.Scene {
             "RESOURCES:\n" +
             "  🍎 Supplies: Decreases over time and rapidly during storms. Must remain above 0.\n" +
             "  👍 Morale: Affected by decisions. Low morale increases risk.\n\n" +
-            `OBJECTIVE: Reach the north end of the map after visiting all ${COASTAL_POINTS.length} anchor points (⚓).`
+            `OBJECTIVE: Visit all ${REQUIRED_EVENTS} anchor points (⚓) and reach the north end of the map.`
             
         this.add.text(width/2 - panelW/2 + 20, height/2 - panelH/2 + 40, introText, textStyle);
             
@@ -203,32 +248,21 @@ class NavigatorScene extends Phaser.Scene {
         const width = this.gameData.map_width;
         const height = this.gameData.map_height;
 
-        // --- 1. GAME ENVIRONMENT (Coastal Map Graphics) ---
+        // --- 1. GAME ENVIRONMENT (Randomized Coastal Map) ---
         const mapGraphics = this.add.graphics();
         
+        // Ocean/Water (Black)
         mapGraphics.fillStyle(0x000000, 1).fillRect(0, 0, width, height);
         
-        mapGraphics.fillStyle(0xCCCCCC, 1); 
-        mapGraphics.beginPath();
-        mapGraphics.moveTo(width / 2, height); 
-        mapGraphics.lineTo(width, height);     
-        mapGraphics.lineTo(width, 0);          
-        mapGraphics.lineTo(300, 0);            
-        mapGraphics.lineTo(250, 50);
-        mapGraphics.lineTo(200, 150);
-        mapGraphics.lineTo(150, 250);
-        mapGraphics.lineTo(200, 350);
-        mapGraphics.lineTo(250, 450);
-        mapGraphics.lineTo(350, 550);
-        mapGraphics.lineTo(400, 650);
-        mapGraphics.lineTo(width / 2, height); 
-        mapGraphics.closePath();
-        mapGraphics.fill();
+        // Land Mass (Gray) - Uses randomized path
+        createRandomCoastline(mapGraphics, width, height);
         
+        // Save the map texture for collision checks
         this.mapTexture = mapGraphics.generateTexture('coastMap', width, height);
 
         // --- 2. PLAYER SPRITE ---
-        this.ship = this.add.text(380, 700, '⛵', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
+        // Start position adjusted slightly to ensure it's in the clear black water.
+        this.ship = this.add.text(380, 720, '⛵', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
         this.physics.add.existing(this.ship); 
         this.ship.body.setDamping(true).setDrag(0.99).setMaxVelocity(100);
 
@@ -249,6 +283,7 @@ class NavigatorScene extends Phaser.Scene {
               wordWrap: { width: width - 80 } })
             .setOrigin(0.5).setDepth(5).setVisible(false);
 
+        // --- 4. CONTROLS ---
         this.cursors = this.input.keyboard.createCursorKeys();
 
         // --- 5. EVENT LOCATIONS ---
@@ -315,21 +350,24 @@ class NavigatorScene extends Phaser.Scene {
         this.updateResources();
         this.checkEvents();
         this.checkGameOver();
+        this.checkNorthBoundary(); // New: Boundary check
     }
     
     checkMovementState() {
         // --- Land/Sea Sprite Swap Check ---
+        // Get the pixel data at the ship's current position
         const pixel = this.sys.game.renderer.snapshotPixel(this.ship.x, this.ship.y);
         
         // Land color is 0xCCCCCC (R, G, B > 0). Water is 0x000000 (R, G, B = 0).
+        // Check if any color component is greater than 0
         const isOnLand = (pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0); 
 
         if (isOnLand && !this.isCurrentlyLand) {
-            this.ship.setText('🐴'); 
+            this.ship.setText('🐴'); // Change to horse
             this.ship.setRotation(0); 
             this.isCurrentlyLand = true;
         } else if (!isOnLand && this.isCurrentlyLand) {
-            this.ship.setText('⛵'); 
+            this.ship.setText('⛵'); // Change to ship
             this.isCurrentlyLand = false;
         }
     }
@@ -353,7 +391,8 @@ class NavigatorScene extends Phaser.Scene {
         } else {
             this.ship.body.setAngularVelocity(0);
         }
-        this.physics.world.wrap(this.ship, 0); 
+        // Disabled world wrap to implement custom north boundary check
+        // this.physics.world.wrap(this.ship, 0); 
     }
 
     updateResources() {
@@ -383,7 +422,6 @@ class NavigatorScene extends Phaser.Scene {
         let minDistance = Infinity;
         const shipIsLandEvent = this.isCurrentlyLand;
 
-        // --- Land/Sea Event Trigger Logic ---
         this.eventData.forEach(event => {
             if (event.triggered) return;
             
@@ -449,7 +487,6 @@ class NavigatorScene extends Phaser.Scene {
         this.updateHUD();
         
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
-        // Delay set to 5000ms (5 seconds)
         this.time.delayedCall(5000, () => this.feedbackText.setVisible(false));
 
         this.logbookPanel.setVisible(false);
@@ -457,10 +494,35 @@ class NavigatorScene extends Phaser.Scene {
         this.eventTriggered = false; 
     }
     
+    checkNorthBoundary() {
+        const remainingEvents = this.eventData.filter(e => !e.triggered).length;
+
+        if (this.ship.y < 0 && remainingEvents > 0) {
+            // Stop motion and reset position to center
+            this.ship.body.setVelocity(0);
+            this.ship.body.setAcceleration(0);
+            this.ship.x = this.gameData.map_width / 2;
+            this.ship.y = this.gameData.map_height / 2;
+            
+            // Show alert message
+            this.feedbackText.setText(`[ BOUNDARY ALERT: ${remainingEvents} events left! Return to the coastline. ]`).setVisible(true);
+            this.time.delayedCall(5000, () => this.feedbackText.setVisible(false));
+            
+            // Optional: Penalize player slightly for trying to cheat
+            this.gameData.morale -= 5;
+            this.updateHUD();
+        }
+    }
+
     checkGameOver() {
+        // Game Over Conditions
         if (this.gameData.supplies <= 0 || this.gameData.morale <= 0) {
             this.showEndScreen('GAME OVER', 'DEFEAT: The mission failed due to lack of supplies or crew unrest.');
-        } else if (this.eventData.every(e => e.triggered) && this.ship.y < 100) {
+            return;
+        } 
+        
+        // Victory Condition: All events triggered AND past the northern threshold (y < 100)
+        if (this.eventData.every(e => e.triggered) && this.ship.y < 100) {
             this.showEndScreen('MISSION SUCCESS', `VICTORY! All ${this.eventData.length} ports discovered! Final Morale: ${this.gameData.morale}%`);
         }
     }
@@ -471,7 +533,7 @@ class NavigatorScene extends Phaser.Scene {
         let endPanel = this.add.graphics().fillStyle(0x000000, 1).fillRect(0, 0, this.gameData.map_width, this.gameData.map_height).setDepth(200);
         
         let alertW = 400;
-        let alertH = 250; // Increased height to fit restart button
+        let alertH = 250; 
         let alertX = this.gameData.map_width / 2;
         let alertY = this.gameData.map_height / 2;
         
@@ -479,16 +541,16 @@ class NavigatorScene extends Phaser.Scene {
             .fillRect(alertX - alertW / 2, alertY - alertH / 2, alertW, alertH)
             .strokeRect(alertX - alertW / 2, alertY - alertH / 2, alertW, alertH).setDepth(201);
             
-        this.add.text(alertX, alertY - 80, title, { // Moved title up
+        this.add.text(alertX, alertY - 80, title, { 
             fontSize: 24, fill: '#000000', fontFamily: 'Courier New, monospace', fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(202);
 
-        this.add.text(alertX, alertY - 20, message, { // Moved message up
+        this.add.text(alertX, alertY - 20, message, { 
             fontSize: 18, fill: '#000000', fontFamily: 'Courier New, monospace',
             wordWrap: { width: alertW - 40 }
         }).setOrigin(0.5).setDepth(202);
 
-        // --- NEW: Restart Button ---
+        // --- Restart Button ---
         const restartButton = this.add.text(alertX, alertY + 70, '[ RESTART VOYAGE ]', { 
             fontSize: 20, 
             fill: '#000000', 
@@ -498,13 +560,12 @@ class NavigatorScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(202);
 
         restartButton.on('pointerdown', () => {
-            // Restart the current scene, which re-runs create() and re-initializes eventData
-            this.scene.start('IntroScene');
+            // FIX: Restart NavigatorScene directly to re-run create() and reset game state
+            this.scene.start('NavigatorScene');
         });
         
         restartButton.on('pointerover', () => restartButton.setBackgroundColor('#000000').setFill('#FFFFFF'));
         restartButton.on('pointerout', () => restartButton.setBackgroundColor('#CCCCCC').setFill('#000000'));
-        // ---------------------------
     }
 }
 
