@@ -1,24 +1,21 @@
-// game.js (FINAL FEATURE SET)
+// game.js (LAYOUT AND TIMING FIXES)
 
 // --- CORE GAME DATA ---
-
-// 1. All possible coastal event locations (x, y coordinates based on 700x750 map)
-// These points are where the event anchors (⚓) will be placed randomly.
+// All possible coastal event locations (x, y coordinates based on 700x750 map)
 const COASTAL_POINTS = [
-    { x: 380, y: 650, type: 'coastal' }, // Near Baja (South Start)
+    { x: 380, y: 650, type: 'coastal' }, 
     { x: 300, y: 580, type: 'coastal' },
     { x: 250, y: 500, type: 'coastal' },
-    { x: 200, y: 430, type: 'coastal' }, // Mid-coast
+    { x: 200, y: 430, type: 'coastal' }, 
     { x: 150, y: 350, type: 'coastal' },
     { x: 100, y: 280, type: 'coastal' },
     { x: 100, y: 180, type: 'coastal' },
-    { x: 150, y: 100, type: 'inland' },  // Inland point (Gray Area)
-    { x: 250, y: 80, type: 'inland' },   // Inland point (Gray Area)
+    { x: 150, y: 100, type: 'inland' },  
+    { x: 250, y: 80, type: 'inland' },   
 ];
 
-// 2. All event content (randomly assigned to locations on startup)
+// All event content (randomly assigned to locations on startup)
 const ALL_EVENTS = [
-    // Original 5 Events (Renamed for clarity)
     {
         name: "Bay of San Miguel (Resource Need)", isLand: false,
         logbook_text: "We entered a port and named it San Miguel. The land is excellent, and we saw signs of people. Morale is high, but we need supplies.",
@@ -64,8 +61,6 @@ const ALL_EVENTS = [
             { text: "Risk pushing through the fog at high speed (Time is Critical).", supplies_change: -5, morale_change: -10, feedback: "The danger was palpable; the ship nearly ran aground, severely damaging morale." }
         ],
     },
-    
-    // --- NEW 4 Events ---
     {
         name: "Inland Exploration (Land Expedition)", isLand: true,
         logbook_text: "The logbook describes sending a small party inland to scout for fresh water sources and better trading opportunities.",
@@ -106,20 +101,18 @@ const ALL_EVENTS = [
 
 // Combine locations and events randomly
 function initializeEventData() {
-    // 1. Shuffle the events and pick the first 9 (or all if there are fewer than 9 points)
     const shuffledEvents = Phaser.Utils.Array.Shuffle(ALL_EVENTS).slice(0, COASTAL_POINTS.length);
 
-    // 2. Assign the event data to the location points
     const finalEvents = COASTAL_POINTS.map((point, index) => {
         const event = shuffledEvents[index];
         return {
-            ...point, // x, y, type (coastal/inland)
+            ...point, 
             location_name: event.name,
             logbook_text: event.logbook_text,
             question: event.question,
             choices: event.choices,
             triggered: false,
-            isLand: event.isLand // Track if this content should only trigger on land
+            isLand: event.isLand 
         };
     });
     return finalEvents;
@@ -157,7 +150,6 @@ class IntroScene extends Phaser.Scene {
             wordWrap: { width: panelW - 40 }
         };
 
-        // FIX: Moved title down slightly (y + 8) to prevent clipping
         this.add.text(width/2, height/2 - panelH/2 + 8, ' CABRILLO\'S VOYAGE (1542) ', 
             { fontSize: 18, fill: '#000000', fontFamily: 'Courier New, monospace', fontStyle: 'bold' })
             .setOrigin(0.5);
@@ -201,8 +193,8 @@ class NavigatorScene extends Phaser.Scene {
             map_width: 700  
         };
         this.eventTriggered = false;
-        this.isCurrentlyLand = false; // New state tracker for sprite swap
-        this.eventData = initializeEventData(); // Initialize random events
+        this.isCurrentlyLand = false; 
+        this.eventData = initializeEventData(); 
     }
 
     preload() {}
@@ -214,16 +206,14 @@ class NavigatorScene extends Phaser.Scene {
         // --- 1. GAME ENVIRONMENT (Coastal Map Graphics) ---
         const mapGraphics = this.add.graphics();
         
-        // Ocean/Water (Black)
         mapGraphics.fillStyle(0x000000, 1).fillRect(0, 0, width, height);
         
-        // Land Mass (Gray) - Drawing a more dynamic coastline
         mapGraphics.fillStyle(0xCCCCCC, 1); 
         mapGraphics.beginPath();
-        mapGraphics.moveTo(width / 2, height); // Start near bottom center
-        mapGraphics.lineTo(width, height);     // Bottom right
-        mapGraphics.lineTo(width, 0);          // Top right
-        mapGraphics.lineTo(300, 0);            // Coastline starts at x=300 top
+        mapGraphics.moveTo(width / 2, height); 
+        mapGraphics.lineTo(width, height);     
+        mapGraphics.lineTo(width, 0);          
+        mapGraphics.lineTo(300, 0);            
         mapGraphics.lineTo(250, 50);
         mapGraphics.lineTo(200, 150);
         mapGraphics.lineTo(150, 250);
@@ -231,14 +221,13 @@ class NavigatorScene extends Phaser.Scene {
         mapGraphics.lineTo(250, 450);
         mapGraphics.lineTo(350, 550);
         mapGraphics.lineTo(400, 650);
-        mapGraphics.lineTo(width / 2, height); // Back to start
+        mapGraphics.lineTo(width / 2, height); 
         mapGraphics.closePath();
         mapGraphics.fill();
         
-        // Save the map texture for collision checks
         this.mapTexture = mapGraphics.generateTexture('coastMap', width, height);
 
-        // --- 2. PLAYER SPRITE (Starts as Ship) ---
+        // --- 2. PLAYER SPRITE ---
         this.ship = this.add.text(380, 700, '⛵', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
         this.physics.add.existing(this.ship); 
         this.ship.body.setDamping(true).setDrag(0.99).setMaxVelocity(100);
@@ -291,7 +280,6 @@ class NavigatorScene extends Phaser.Scene {
         graphics.fillStyle(0xCCCCCC, 1); 
         graphics.fillRect(-panelW / 2 + 1, -panelH / 2 + 1, panelW - 2, 25);
         
-        // FIX: Moved title down slightly (y + 8) to prevent clipping
         this.logbookTitle = this.add.text(0, -panelH / 2 + 8, ' CABRILLO\'S LOGBOOK ', { fontSize: 16, fill: '#000000', fontFamily: 'Courier New, monospace' }).setOrigin(0.5);
 
         const contentWidth = panelW - 40; 
@@ -323,35 +311,31 @@ class NavigatorScene extends Phaser.Scene {
         }
 
         this.handleInput();
-        this.checkMovementState(); // New: Check if ship is on land or sea
+        this.checkMovementState(); 
         this.updateResources();
         this.checkEvents();
         this.checkGameOver();
     }
     
-    // NEW: Sprite Swap Logic
     checkMovementState() {
-        // Get the pixel data at the ship's current position
         const pixel = this.sys.game.renderer.snapshotPixel(this.ship.x, this.ship.y);
         
-        // The land color is 0xCCCCCC (Light Gray). The water color is 0x000000 (Black).
-        // Since the pixel data is RGBA, we check the red channel (first element of the array).
-        // If R > 0 (meaning not black), we assume it's on land.
+        // Check if color is not black (i.e., on land mass, 0xCCCCCC)
         const isOnLand = (pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0); 
 
         if (isOnLand && !this.isCurrentlyLand) {
-            this.ship.setText('🐴'); // Change to horse
-            this.ship.setRotation(0); // Reset rotation to look like it's facing right/forward
+            this.ship.setText('🐴'); 
+            this.ship.setRotation(0); 
             this.isCurrentlyLand = true;
         } else if (!isOnLand && this.isCurrentlyLand) {
-            this.ship.setText('⛵'); // Change back to ship
+            this.ship.setText('⛵'); 
             this.isCurrentlyLand = false;
         }
     }
 
     handleInput() {
-        const acceleration = this.isCurrentlyLand ? 150 : 200; // Slower on land
-        const rotationSpeed = this.isCurrentlyLand ? 150 : 100; // Steers quicker on land
+        const acceleration = this.isCurrentlyLand ? 150 : 200; 
+        const rotationSpeed = this.isCurrentlyLand ? 150 : 100; 
 
         if (this.cursors.up.isDown) {
             this.physics.velocityFromRotation(this.ship.rotation - Math.PI / 2, acceleration, this.ship.body.acceleration);
@@ -398,13 +382,12 @@ class NavigatorScene extends Phaser.Scene {
         let minDistance = Infinity;
         const shipIsLandEvent = this.isCurrentlyLand;
 
-        // Find the nearest UNTRIGGERED event that matches the ship's current location type
         this.eventData.forEach(event => {
             if (event.triggered) return;
             
-            // Logic to restrict event trigger based on land/sea match
+            // Only check for events that match the current land/sea state
             if (event.isLand !== shipIsLandEvent) {
-                 return; // Only trigger coastal events on water, and land events on land
+                 return; 
             }
             
             let distance = Phaser.Math.Distance.Between(this.ship.x, this.ship.y, event.x, event.y);
@@ -436,7 +419,8 @@ class NavigatorScene extends Phaser.Scene {
         const buttonContentWidth = panelW - 40; 
 
         event.choices.forEach((choice, index) => {
-            let buttonY = 80 + (index * 40); 
+            // Increased spacing to 50 pixels to prevent text overlap
+            let buttonY = 80 + (index * 50); 
             
             let buttonText = this.add.text(
                 buttonStart, buttonY, 
@@ -463,7 +447,8 @@ class NavigatorScene extends Phaser.Scene {
         this.updateHUD();
         
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
-        this.time.delayedCall(3000, () => this.feedbackText.setVisible(false));
+        // Delay increased to 5000ms (5 seconds)
+        this.time.delayedCall(5000, () => this.feedbackText.setVisible(false));
 
         this.logbookPanel.setVisible(false);
         this.choiceButtons.destroy();
@@ -515,7 +500,6 @@ const config = {
             debug: false 
         }
     },
-    // Required to check pixel color for land/sea swap
     transparent: false, 
     disableContextMenu: true, 
     render: {
