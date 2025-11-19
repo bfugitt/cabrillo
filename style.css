@@ -1,0 +1,45 @@
+/* style.css */
+
+/* Use a monospaced font to emulate the pixelated/system font */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #AAAAAA; /* Mac System 6 desktop gray */
+    font-family: 'Courier New', monospace; 
+}
+
+/* Style the game container area */
+#game-container {
+    border: 3px solid #000000;
+    box-shadow: 4px 4px #444444; /* Retro Mac drop shadow */
+    background-color: #FFFFFF; /* Window white background */
+}
+
+/* Styles to be applied to Phaser text objects (via HTML style tag) */
+.mac-text {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    color: #000000;
+}
+
+.mac-title {
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    color: #000000;
+    background-color: #CCCCCC; /* Title bar look */
+    padding: 2px 5px;
+    border-bottom: 2px solid #000000;
+}
+
+/* Specific styling for the Logbook Pop-up to maintain the theme */
+.logbook-text {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    color: #000000;
+    line-height: 1.2;
+}
