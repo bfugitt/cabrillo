@@ -1,4 +1,4 @@
-// game.js (LAYOUT AND TIMING FIXES)
+// game.js (FINAL POLISHED VERSION with RESTART)
 
 // --- CORE GAME DATA ---
 // All possible coastal event locations (x, y coordinates based on 700x750 map)
@@ -318,9 +318,10 @@ class NavigatorScene extends Phaser.Scene {
     }
     
     checkMovementState() {
+        // --- Land/Sea Sprite Swap Check ---
         const pixel = this.sys.game.renderer.snapshotPixel(this.ship.x, this.ship.y);
         
-        // Check if color is not black (i.e., on land mass, 0xCCCCCC)
+        // Land color is 0xCCCCCC (R, G, B > 0). Water is 0x000000 (R, G, B = 0).
         const isOnLand = (pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0); 
 
         if (isOnLand && !this.isCurrentlyLand) {
@@ -382,10 +383,11 @@ class NavigatorScene extends Phaser.Scene {
         let minDistance = Infinity;
         const shipIsLandEvent = this.isCurrentlyLand;
 
+        // --- Land/Sea Event Trigger Logic ---
         this.eventData.forEach(event => {
             if (event.triggered) return;
             
-            // Only check for events that match the current land/sea state
+            // Crucial check: only check for events that match the current land/sea state
             if (event.isLand !== shipIsLandEvent) {
                  return; 
             }
@@ -419,7 +421,7 @@ class NavigatorScene extends Phaser.Scene {
         const buttonContentWidth = panelW - 40; 
 
         event.choices.forEach((choice, index) => {
-            // Increased spacing to 50 pixels to prevent text overlap
+            // Spacing increased to 50 pixels to prevent text overlap
             let buttonY = 80 + (index * 50); 
             
             let buttonText = this.add.text(
@@ -447,7 +449,7 @@ class NavigatorScene extends Phaser.Scene {
         this.updateHUD();
         
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
-        // Delay increased to 5000ms (5 seconds)
+        // Delay set to 5000ms (5 seconds)
         this.time.delayedCall(5000, () => this.feedbackText.setVisible(false));
 
         this.logbookPanel.setVisible(false);
@@ -469,7 +471,7 @@ class NavigatorScene extends Phaser.Scene {
         let endPanel = this.add.graphics().fillStyle(0x000000, 1).fillRect(0, 0, this.gameData.map_width, this.gameData.map_height).setDepth(200);
         
         let alertW = 400;
-        let alertH = 200;
+        let alertH = 250; // Increased height to fit restart button
         let alertX = this.gameData.map_width / 2;
         let alertY = this.gameData.map_height / 2;
         
@@ -477,14 +479,32 @@ class NavigatorScene extends Phaser.Scene {
             .fillRect(alertX - alertW / 2, alertY - alertH / 2, alertW, alertH)
             .strokeRect(alertX - alertW / 2, alertY - alertH / 2, alertW, alertH).setDepth(201);
             
-        this.add.text(alertX, alertY - 50, title, {
+        this.add.text(alertX, alertY - 80, title, { // Moved title up
             fontSize: 24, fill: '#000000', fontFamily: 'Courier New, monospace', fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(202);
 
-        this.add.text(alertX, alertY + 10, message, {
+        this.add.text(alertX, alertY - 20, message, { // Moved message up
             fontSize: 18, fill: '#000000', fontFamily: 'Courier New, monospace',
             wordWrap: { width: alertW - 40 }
         }).setOrigin(0.5).setDepth(202);
+
+        // --- NEW: Restart Button ---
+        const restartButton = this.add.text(alertX, alertY + 70, '[ RESTART VOYAGE ]', { 
+            fontSize: 20, 
+            fill: '#000000', 
+            backgroundColor: '#CCCCCC',
+            padding: { x: 10, y: 5 },
+            fontFamily: 'Courier New, monospace'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(202);
+
+        restartButton.on('pointerdown', () => {
+            // Restart the current scene, which re-runs create() and re-initializes eventData
+            this.scene.start('IntroScene');
+        });
+        
+        restartButton.on('pointerover', () => restartButton.setBackgroundColor('#000000').setFill('#FFFFFF'));
+        restartButton.on('pointerout', () => restartButton.setBackgroundColor('#CCCCCC').setFill('#000000'));
+        // ---------------------------
     }
 }
 
