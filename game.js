@@ -1,10 +1,11 @@
-// game.js
+// game.js (REVISED)
 
 // --- CORE GAME DATA (THE EDUCATIONAL CONTENT) ---
 const eventData = [
+    // Data remains the same, but the coordinates (x, y) are adjusted for the smaller map size (700x750)
     {
         location_name: "San Diego Bay",
-        x: 450, y: 750, 
+        x: 380, y: 650, 
         logbook_text: "We entered a port and named it San Miguel. The land is excellent, and we saw signs of people. Morale is high, but we need supplies.",
         question: "Do you approach the local Kumeyaay people to trade for vital supplies, or cautiously sail past?",
         choices: [
@@ -15,7 +16,7 @@ const eventData = [
     },
     {
         location_name: "Santa Catalina Island",
-        x: 300, y: 450,
+        x: 250, y: 400,
         logbook_text: "The seas are rough. We anchored near an island where the people came out in many canoes and were friendly. A native was injured nearby.",
         question: "Do you spend valuable supplies and time to treat the injured person?",
         choices: [
@@ -26,7 +27,7 @@ const eventData = [
     },
     {
         location_name: "Point Conception",
-        x: 150, y: 250,
+        x: 100, y: 200,
         logbook_text: "We encountered a storm so violent we thought we would perish. The wind tore the sails and the waves were enormous.",
         question: "A harsh storm threatens. Do you: **A)** Risk the narrow coastal channel, or **B)** Go around the treacherous point?",
         choices: [
@@ -37,6 +38,80 @@ const eventData = [
     }
 ];
 
+// --- INTRO SCENE (NEW) ---
+class IntroScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'IntroScene' });
+    }
+
+    create() {
+        const width = 700;
+        const height = 750;
+
+        // Black background
+        this.add.graphics().fillStyle(0x000000, 1).fillRect(0, 0, width, height);
+
+        // Retro Mac Window for Intro Text
+        const panelW = 500;
+        const panelH = 600;
+        
+        // Window Frame
+        let graphics = this.add.graphics();
+        graphics.fillStyle(0xFFFFFF, 1); 
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.fillRect(width/2 - panelW/2, height/2 - panelH/2, panelW, panelH);
+        graphics.strokeRect(width/2 - panelW/2, height/2 - panelH/2, panelW, panelH);
+
+        // Title Bar
+        graphics.fillStyle(0xCCCCCC, 1); 
+        graphics.fillRect(width/2 - panelW/2 + 1, height/2 - panelH/2 + 1, panelW - 2, 25);
+        
+        // Content Style
+        const textStyle = { 
+            fontSize: 16, 
+            fill: '#000000', 
+            fontFamily: 'Courier New, monospace', 
+            wordWrap: { width: panelW - 40 }
+        };
+
+        this.add.text(width/2, height/2 - panelH/2 + 5, ' CABRILLO\'S VOYAGE (1542) ', 
+            { fontSize: 18, fill: '#000000', fontFamily: 'Courier New, monospace', fontStyle: 'bold' })
+            .setOrigin(0.5);
+
+        const introText = 
+            "MISSION: Navigate the coast of California, discover new ports, and maintain the honor and supplies of your crew.\n\n" +
+            "BACKGROUND: You are Juan Rodríguez Cabrillo, leading a Spanish expedition. Your journey requires navigation, resource management, and ethical decisions regarding indigenous people.\n\n" +
+            "CONTROLS:\n" +
+            "  ⬆️ UP Arrow: Accelerate forward.\n" +
+            "  ⬅️ ➡️ LEFT/RIGHT Arrows: Turn your ship.\n\n" +
+            "RESOURCES:\n" +
+            "  🍎 Supplies: Decreases over time and rapidly during storms. Must remain above 0.\n" +
+            "  👍 Morale: Affected by decisions. Low morale causes faster resource loss.\n\n" +
+            "OBJECTIVE: Reach the top of the map after triggering all anchor points (📍) before supplies run out."
+            
+        this.add.text(width/2 - panelW/2 + 20, height/2 - panelH/2 + 40, introText, textStyle);
+            
+        // Start Button
+        const startButton = this.add.text(width/2, height - 100, '[ CLICK TO START VOYAGE ]', { 
+            fontSize: 20, 
+            fill: '#000000', 
+            backgroundColor: '#CCCCCC',
+            padding: { x: 10, y: 5 },
+            fontFamily: 'Courier New, monospace'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        startButton.on('pointerdown', () => {
+            this.scene.start('NavigatorScene');
+        });
+        
+        // Simple hover effect for Mac look
+        startButton.on('pointerover', () => startButton.setBackgroundColor('#000000').setFill('#FFFFFF'));
+        startButton.on('pointerout', () => startButton.setBackgroundColor('#CCCCCC').setFill('#000000'));
+    }
+}
+
+
+// --- NAVIGATOR SCENE (MAIN GAME LOGIC) ---
 class NavigatorScene extends Phaser.Scene {
     constructor() {
         super({ key: 'NavigatorScene' });
@@ -44,37 +119,39 @@ class NavigatorScene extends Phaser.Scene {
             supplies: 100,
             morale: 100,
             speed: 50,
-            map_height: 900,
-            map_width: 800
+            map_height: 750, // Reduced Height
+            map_width: 700  // Reduced Width
         };
         this.eventTriggered = false;
     }
 
-    preload() {
-        // No external assets, using built-in graphics and text.
-    }
+    preload() {}
 
     create() {
+        const width = this.gameData.map_width;
+        const height = this.gameData.map_height;
+
         // --- 1. GAME ENVIRONMENT (Retro Style) ---
         // Background and Map Graphics (Black/White/Gray for Mac 6)
         this.add.graphics()
             .fillStyle(0x000000, 1) // Ocean/Water Black
-            .fillRect(0, 0, this.gameData.map_width, this.gameData.map_height)
+            .fillRect(0, 0, width, height)
             .fillStyle(0xCCCCCC, 1) // Land Gray
-            .fillTriangle(400, 900, 800, 900, 800, 0)
-            .fillCircle(450, 780, 50); 
+            .fillTriangle(350, 750, 700, 750, 700, 0)
+            .fillCircle(380, 680, 50); // Baja peninsula start (adjusted coords)
         
         // --- 2. PLAYER SPRITE (Emoji/Text with Physics) ---
-        this.ship = this.add.text(450, 850, '🚢', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
+        // Ship starts further down for the smaller map
+        this.ship = this.add.text(380, 700, '🚢', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
         this.physics.add.existing(this.ship); 
         this.ship.body.setDamping(true).setDrag(0.99).setMaxVelocity(100);
 
         // --- 3. UI/HUD (Retro Mac Style) ---
         const macTextStyle = { fontSize: '18px', fill: '#000000', fontFamily: 'Courier New, monospace' };
         
-        // Create a dedicated graphics box for the HUD to fit the theme
+        // Create a dedicated graphics box for the HUD
         this.add.graphics()
-            .fillStyle(0xDDDDDD, 1) // Light gray background
+            .fillStyle(0xDDDDDD, 1) 
             .lineStyle(2, 0x000000, 1)
             .strokeRect(10, 10, 200, 60)
             .fillRect(10, 10, 200, 60);
@@ -82,7 +159,7 @@ class NavigatorScene extends Phaser.Scene {
         this.supplyText = this.add.text(20, 15, 'Supplies: 100', macTextStyle);
         this.moraleText = this.add.text(20, 40, 'Morale: 100%', macTextStyle);
         
-        this.feedbackText = this.add.text(this.gameData.map_width / 2, 70, '', 
+        this.feedbackText = this.add.text(width / 2, 70, '', 
             { fontSize: '18px', fill: '#000000', backgroundColor: '#FFFFFF', padding: { x: 5, y: 2 } })
             .setOrigin(0.5).setDepth(5).setVisible(false);
 
@@ -101,40 +178,54 @@ class NavigatorScene extends Phaser.Scene {
     
     // Custom function to create the Mac System 6 style window
     createLogbookWindow() {
-        const x = this.gameData.map_width / 2;
-        const y = this.gameData.map_height / 2;
-        const panelW = 500;
-        const panelH = 380;
+        const width = this.gameData.map_width;
+        const height = this.gameData.map_height;
+        const panelW = 450; // Adjusted for smaller canvas
+        const panelH = 350; // Adjusted for smaller canvas
+        const x = width / 2;
+        const y = height / 2;
 
         let container = this.add.container(x, y);
 
-        // Mac Window Frame (White Fill, Thick Black Border, Drop Shadow)
+        // Mac Window Frame
         let graphics = this.add.graphics();
         graphics.fillStyle(0xFFFFFF, 1); 
         graphics.lineStyle(3, 0x000000, 1);
         graphics.fillRect(-panelW / 2, -panelH / 2, panelW, panelH);
         graphics.strokeRect(-panelW / 2, -panelH / 2, panelW, panelH);
 
-        // Title Bar (Striped/Gray Top)
+        // Title Bar
         graphics.fillStyle(0xCCCCCC, 1); 
         graphics.fillRect(-panelW / 2 + 1, -panelH / 2 + 1, panelW - 2, 25);
-        
-        // Window Close Button (Blocky 'X')
-        this.add.text(-panelW / 2 + 5, -panelH / 2 + 3, '◼', { fontSize: 18, fill: '#000000' });
         
         // Title Text
         this.logbookTitle = this.add.text(0, -panelH / 2 + 5, ' CABRILLO\'S LOGBOOK ', { fontSize: 16, fill: '#000000', fontFamily: 'Courier New, monospace' }).setOrigin(0.5);
 
-        // Content
-        this.logbookText = this.add.text(-230, -130, '', { wordWrap: { width: 460 }, fill: '#000000', fontSize: 16, fontFamily: 'Courier New, monospace' });
-        this.questionText = this.add.text(-230, 20, '', { fill: '#000000', fontSize: 18, fontFamily: 'Courier New, monospace', fontStyle: 'bold' });
+        // Content (Text Wrapping FIX)
+        const contentWidth = panelW - 40; // 410px width
+        
+        this.logbookText = this.add.text(-panelW/2 + 20, -130, '', { 
+            wordWrap: { width: contentWidth }, // FIX: Text wrapping width
+            fill: '#000000', fontSize: 16, fontFamily: 'Courier New, monospace' 
+        });
+        
+        this.questionText = this.add.text(-panelW/2 + 20, 20, '', { 
+            wordWrap: { width: contentWidth }, // FIX: Text wrapping width
+            fill: '#000000', fontSize: 18, fontFamily: 'Courier New, monospace', fontStyle: 'bold' 
+        });
 
         container.add([graphics, this.logbookTitle, this.logbookText, this.questionText]);
         return container;
     }
 
     update() {
-        if (this.eventTriggered) return;
+        // FIX: Halt movement and resource drain when an event is triggered
+        if (this.eventTriggered) {
+            this.ship.body.setAcceleration(0);
+            this.ship.body.setVelocity(0);
+            this.ship.body.setAngularVelocity(0);
+            return; 
+        }
 
         this.handleInput();
         this.updateResources();
@@ -143,6 +234,7 @@ class NavigatorScene extends Phaser.Scene {
     }
 
     handleInput() {
+        // Input logic remains the same, but is skipped if eventTriggered is true (see update())
         if (this.cursors.up.isDown) {
             this.physics.velocityFromRotation(this.ship.rotation - Math.PI / 2, 200, this.ship.body.acceleration);
         } else {
@@ -162,7 +254,7 @@ class NavigatorScene extends Phaser.Scene {
     }
 
     updateResources() {
-        if (Phaser.Math.Between(1, 90) === 1) { // Faster decay for testing
+        if (Phaser.Math.Between(1, 90) === 1) { 
             this.gameData.supplies -= 1;
             this.updateHUD();
         }
@@ -175,7 +267,6 @@ class NavigatorScene extends Phaser.Scene {
         this.supplyText.setText(`Supplies: ${this.gameData.supplies} (min:20)`);
         this.moraleText.setText(`Morale: ${this.gameData.morale}% (min:40)`);
 
-        // Use Mac-style inverse text for warnings
         this.supplyText.setFill(this.gameData.supplies < 20 ? '#FFFFFF' : '#000000');
         this.supplyText.setBackgroundColor(this.gameData.supplies < 20 ? '#000000' : null);
         this.moraleText.setFill(this.gameData.morale < 40 ? '#FFFFFF' : '#000000');
@@ -206,23 +297,19 @@ class NavigatorScene extends Phaser.Scene {
         this.choiceButtons = this.add.group();
 
         event.choices.forEach((choice, index) => {
-            let buttonY = 120 + (index * 40);
+            let buttonY = 80 + (index * 40); // Adjusted button spacing for smaller panel
             
-            // Retro Mac Button Style (Thick Border, Inverted on Hover)
-            let buttonText = this.add.text(-230, buttonY, `[ ${choice.text} ]`, { 
-                fontSize: 16, 
-                fill: '#000000', 
-                backgroundColor: '#DDDDDD',
-                padding: { x: 5, y: 2 },
-                fontFamily: 'Courier New, monospace'
+            let buttonText = this.add.text(
+                -this.logbookPanel.getBounds().width/2 + 20, buttonY, 
+                `[ ${choice.text} ]`, { 
+                fontSize: 16, fill: '#000000', backgroundColor: '#DDDDDD',
+                padding: { x: 5, y: 2 }, fontFamily: 'Courier New, monospace'
             }).setInteractive({ useHandCursor: true });
             
-            // Simple hover effect for Mac look
             buttonText.on('pointerover', () => buttonText.setBackgroundColor('#000000').setFill('#FFFFFF'));
             buttonText.on('pointerout', () => buttonText.setBackgroundColor('#DDDDDD').setFill('#000000'));
-
-
             buttonText.on('pointerdown', () => this.handleChoice(choice, event));
+
             this.choiceButtons.add(buttonText);
             this.logbookPanel.add(buttonText);
         });
@@ -235,14 +322,13 @@ class NavigatorScene extends Phaser.Scene {
 
         this.updateHUD();
         
-        // Display UDL Feedback
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
         this.time.delayedCall(3000, () => this.feedbackText.setVisible(false));
 
         // Cleanup and resume
         this.logbookPanel.setVisible(false);
         this.choiceButtons.destroy();
-        this.eventTriggered = false;
+        this.eventTriggered = false; // Resume game loop
     }
     
     checkGameOver() {
@@ -256,10 +342,8 @@ class NavigatorScene extends Phaser.Scene {
     showEndScreen(title, message) {
         this.eventTriggered = true; 
         
-        // Simple black frame with white text for the final screen
         let endPanel = this.add.graphics().fillStyle(0x000000, 1).fillRect(0, 0, this.gameData.map_width, this.gameData.map_height).setDepth(200);
         
-        // Draw an 'Alert Box' for the final message
         let alertW = 400;
         let alertH = 200;
         let alertX = this.gameData.map_width / 2;
@@ -283,9 +367,8 @@ class NavigatorScene extends Phaser.Scene {
 // --- PHASER GAME INITIALIZATION ---
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 900,
-    // Inject canvas into the 'game-container' div
+    width: 700, // FIX: Smaller Width
+    height: 750, // FIX: Smaller Height
     parent: 'game-container', 
     physics: {
         default: 'arcade',
@@ -293,7 +376,7 @@ const config = {
             debug: false 
         }
     },
-    scene: NavigatorScene
+    scene: [IntroScene, NavigatorScene] // FIX: Start with IntroScene
 };
 
 new Phaser.Game(config);
