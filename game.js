@@ -1,63 +1,130 @@
-// game.js (FINAL POLISHED VERSION)
+// game.js (FINAL FEATURE SET)
 
-// --- CORE GAME DATA (THE EDUCATIONAL CONTENT) ---
-const eventData = [
+// --- CORE GAME DATA ---
+
+// 1. All possible coastal event locations (x, y coordinates based on 700x750 map)
+// These points are where the event anchors (⚓) will be placed randomly.
+const COASTAL_POINTS = [
+    { x: 380, y: 650, type: 'coastal' }, // Near Baja (South Start)
+    { x: 300, y: 580, type: 'coastal' },
+    { x: 250, y: 500, type: 'coastal' },
+    { x: 200, y: 430, type: 'coastal' }, // Mid-coast
+    { x: 150, y: 350, type: 'coastal' },
+    { x: 100, y: 280, type: 'coastal' },
+    { x: 100, y: 180, type: 'coastal' },
+    { x: 150, y: 100, type: 'inland' },  // Inland point (Gray Area)
+    { x: 250, y: 80, type: 'inland' },   // Inland point (Gray Area)
+];
+
+// 2. All event content (randomly assigned to locations on startup)
+const ALL_EVENTS = [
+    // Original 5 Events (Renamed for clarity)
     {
-        location_name: "San Diego Bay (Initial Contact)",
-        x: 380, y: 650, 
+        name: "Bay of San Miguel (Resource Need)", isLand: false,
         logbook_text: "We entered a port and named it San Miguel. The land is excellent, and we saw signs of people. Morale is high, but we need supplies.",
-        question: "Do you approach the local Kumeyaay people to trade for vital supplies, or cautiously sail past?",
+        question: "Do you approach the local people to trade for vital supplies, or cautiously sail past?",
         choices: [
-            { text: "Trade Fairly, offering goods in exchange for water and fresh food.", supplies_change: 10, morale_change: 15, feedback: "Respectful trade built trust and secured more resources. Crew morale increased." },
-            { text: "Sail Past, avoiding contact to save time and prevent possible conflict.", supplies_change: 0, morale_change: -10, feedback: "The crew worried about resources and lost confidence in your command. Crew morale decreased." }
+            { text: "Trade Fairly, offering goods in exchange for water and fresh food.", supplies_change: 10, morale_change: 15, feedback: "Respectful trade secured more resources. Crew morale increased." },
+            { text: "Sail Past, avoiding contact to save time and prevent conflict.", supplies_change: 0, morale_change: -10, feedback: "The crew worried about resources and lost confidence in your command. Crew morale decreased." }
         ],
-        triggered: false
     },
     {
-        location_name: "Santa Catalina Island (Injury)",
-        x: 250, y: 400,
+        name: "Santa Catalina (Ethical Choice)", isLand: false,
         logbook_text: "The seas are rough. We anchored near an island where the people came out in many canoes and were friendly. A native person was injured nearby.",
         question: "Do you spend valuable time and medical supplies to treat the injured person?",
         choices: [
             { text: "Provide Care, using limited medical supplies to aid the injured person.", supplies_change: -8, morale_change: 20, feedback: "Showing mercy earned the respect of the local people and the crew. Crew morale increased." },
             { text: "Ignore and Continue, rationing supplies and time for the journey north.", supplies_change: 0, morale_change: -15, feedback: "The crew felt the action was heartless and lost respect for the mission. Crew morale decreased." }
         ],
-        triggered: false
     },
     {
-        location_name: "San Pedro Bay (Inter-Tribal Conflict)",
-        x: 320, y: 500,
+        name: "San Pedro Bay (Diplomacy Challenge)", isLand: false,
         logbook_text: "We encountered two different groups of indigenous people who appear to be in conflict over fishing territory near the bay.",
         question: "How do you respond to the conflict to secure safe passage?",
         choices: [
             { text: "Attempt to mediate a peaceful meeting between the two tribal leaders.", supplies_change: -5, morale_change: 10, feedback: "Diplomacy succeeded, securing safe passage and boosting crew morale." },
             { text: "Avoid the area entirely and sail far offshore to prevent becoming involved.", supplies_change: 0, morale_change: -5, feedback: "Safety was ensured, but the crew resented wasting time and fuel." }
         ],
-        triggered: false
     },
     {
-        location_name: "Monterey Bay (Fog and Shallow Water)",
-        x: 180, y: 150,
-        logbook_text: "The sea has become shrouded in dense fog, and the coastline is treacherous with shallow sandbars that could beach the vessel.",
-        question: "Navigation is nearly impossible. Do you anchor and wait, or risk pushing through the fog?",
-        choices: [
-            { text: "Anchor Immediately and wait for the fog to clear (Safety First).", supplies_change: -15, morale_change: 15, feedback: "Patience prevented disaster, but waiting consumed valuable supplies. Morale UP." },
-            { text: "Risk pushing through the fog at high speed (Time is Critical).", supplies_change: -5, morale_change: -10, feedback: "The danger was palpable; the ship nearly ran aground, severely damaging morale." }
-        ],
-        triggered: false
-    },
-    {
-        location_name: "Point Conception (Major Storm Hazard)",
-        x: 150, y: 250,
+        name: "Point Conception (Structural Damage)", isLand: false,
         logbook_text: "We encountered a storm so violent we thought we would perish. The wind tore the sails and the hull sustained significant damage.",
         question: "Structural damage must be addressed immediately. How do you allocate resources?",
         choices: [
             { text: "Use vital repair materials to reinforce the damaged hull (Prioritize Structure).", supplies_change: -25, morale_change: 0, feedback: "The ship is safe, but supplies are critically low. Supplies DOWN." },
             { text: "Only perform minimal repairs and ration food to save materials (Prioritize Food).", supplies_change: -10, morale_change: -20, feedback: "The crew feels unsafe in the un-repaired ship, causing morale to plummet. Morale LOW." }
         ],
-        triggered: false
-    }
+    },
+    {
+        name: "Monterey Bay (Geographic Hazard)", isLand: false,
+        logbook_text: "The sea has become shrouded in dense fog, and the coastline is treacherous with shallow sandbars that could beach the vessel.",
+        question: "Navigation is nearly impossible. Do you anchor and wait, or risk pushing through the fog?",
+        choices: [
+            { text: "Anchor Immediately and wait for the fog to clear (Safety First).", supplies_change: -15, morale_change: 15, feedback: "Patience prevented disaster, but waiting consumed valuable supplies. Morale UP." },
+            { text: "Risk pushing through the fog at high speed (Time is Critical).", supplies_change: -5, morale_change: -10, feedback: "The danger was palpable; the ship nearly ran aground, severely damaging morale." }
+        ],
+    },
+    
+    // --- NEW 4 Events ---
+    {
+        name: "Inland Exploration (Land Expedition)", isLand: true,
+        logbook_text: "The logbook describes sending a small party inland to scout for fresh water sources and better trading opportunities.",
+        question: "You have found a small river, but the route back is long and risky. Do you continue exploring, or return immediately?",
+        choices: [
+            { text: "Continue exploring for one extra day (High Risk/High Reward).", supplies_change: -10, morale_change: 5, feedback: "You found a better route! Morale UP, but supplies were stretched." },
+            { text: "Return to the main vessel immediately (Low Risk).", supplies_change: -2, morale_change: -5, feedback: "The cautious return was safe, but the crew missed an opportunity. Morale DOWN." }
+        ],
+    },
+    {
+        name: "Sierra Foothills (Broken Gear)", isLand: true,
+        logbook_text: "While crossing a rocky rise, a vital piece of the expedition gear (a quadrant for navigation) was damaged beyond simple repair.",
+        question: "Do you spend a day fully repairing the gear, or proceed with limited navigation tools?",
+        choices: [
+            { text: "Spend a day on full repair.", supplies_change: -15, morale_change: 10, feedback: "The delay cost supplies but the crew felt safer with proper tools." },
+            { text: "Proceed with minimal repair.", supplies_change: 0, morale_change: -15, feedback: "The crew felt the risk of being lost was too high. Morale plummeted." }
+        ],
+    },
+    {
+        name: "Unknown Bay (Naming Rights)", isLand: false,
+        logbook_text: "You have discovered a large, beautiful bay that is not on any existing charts. The crew urges you to choose a name for it.",
+        question: "The decision could boost morale or cause resentment. What name do you choose?",
+        choices: [
+            { text: "Name it after the King of Spain (Political Move).", supplies_change: 0, morale_change: 10, feedback: "The crew saw this as a loyal, career-advancing decision. Morale UP." },
+            { text: "Name it after a beloved crew member (Personal Move).", supplies_change: 0, morale_change: -5, feedback: "Many felt it was unprofessional and disrespectful to the crown. Morale DOWN." }
+        ],
+    },
+    {
+        name: "Coastline Watch (Illness Outbreak)", isLand: false,
+        logbook_text: "Several members of the crew have fallen ill, showing signs of scurvy and severe fever. The supplies are limited.",
+        question: "Do you use your scarce remaining citrus (vitamin C) to treat the sick, or ration it for the whole crew?",
+        choices: [
+            { text: "Use citrus only for the sick (Risk to Healthy Crew).", supplies_change: -10, morale_change: 10, feedback: "The sick members recovered, boosting morale among all, despite the supply drain." },
+            { text: "Ration citrus to the whole crew (Slow Recovery).", supplies_change: -5, morale_change: -10, feedback: "Recovery was slow. The sick felt neglected, and the healthy worried. Morale DOWN." }
+        ],
+    },
 ];
+
+// Combine locations and events randomly
+function initializeEventData() {
+    // 1. Shuffle the events and pick the first 9 (or all if there are fewer than 9 points)
+    const shuffledEvents = Phaser.Utils.Array.Shuffle(ALL_EVENTS).slice(0, COASTAL_POINTS.length);
+
+    // 2. Assign the event data to the location points
+    const finalEvents = COASTAL_POINTS.map((point, index) => {
+        const event = shuffledEvents[index];
+        return {
+            ...point, // x, y, type (coastal/inland)
+            location_name: event.name,
+            logbook_text: event.logbook_text,
+            question: event.question,
+            choices: event.choices,
+            triggered: false,
+            isLand: event.isLand // Track if this content should only trigger on land
+        };
+    });
+    return finalEvents;
+}
+
 
 // --- INTRO SCENE ---
 class IntroScene extends Phaser.Scene {
@@ -90,7 +157,8 @@ class IntroScene extends Phaser.Scene {
             wordWrap: { width: panelW - 40 }
         };
 
-        this.add.text(width/2, height/2 - panelH/2 + 5, ' CABRILLO\'S VOYAGE (1542) ', 
+        // FIX: Moved title down slightly (y + 8) to prevent clipping
+        this.add.text(width/2, height/2 - panelH/2 + 8, ' CABRILLO\'S VOYAGE (1542) ', 
             { fontSize: 18, fill: '#000000', fontFamily: 'Courier New, monospace', fontStyle: 'bold' })
             .setOrigin(0.5);
 
@@ -99,19 +167,16 @@ class IntroScene extends Phaser.Scene {
             "BACKGROUND: You are Juan Rodríguez Cabrillo, leading a Spanish expedition. Your journey requires navigation, resource management, and ethical decisions.\n\n" +
             "CONTROLS:\n" +
             "  ⬆️ UP Arrow: Accelerate forward.\n" +
-            "  ⬅️ ➡️ LEFT/RIGHT Arrows: Turn your ship.\n\n" +
+            "  ⬅️ ➡️ LEFT/RIGHT Arrows: Turn your vessel (ship on water, horse on land).\n\n" +
             "RESOURCES:\n" +
             "  🍎 Supplies: Decreases over time and rapidly during storms. Must remain above 0.\n" +
             "  👍 Morale: Affected by decisions. Low morale increases risk.\n\n" +
-            "OBJECTIVE: Reach the north end of the map after visiting all five anchor points (⚓)."
+            `OBJECTIVE: Reach the north end of the map after visiting all ${COASTAL_POINTS.length} anchor points (⚓).`
             
         this.add.text(width/2 - panelW/2 + 20, height/2 - panelH/2 + 40, introText, textStyle);
             
         const startButton = this.add.text(width/2, height - 100, '[ CLICK TO START VOYAGE ]', { 
-            fontSize: 20, 
-            fill: '#000000', 
-            backgroundColor: '#CCCCCC',
-            padding: { x: 10, y: 5 },
+            fontSize: 20, fill: '#000000', backgroundColor: '#CCCCCC', padding: { x: 10, y: 5 },
             fontFamily: 'Courier New, monospace'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
@@ -132,11 +197,12 @@ class NavigatorScene extends Phaser.Scene {
         this.gameData = {
             supplies: 100,
             morale: 100,
-            speed: 50,
             map_height: 750, 
             map_width: 700  
         };
         this.eventTriggered = false;
+        this.isCurrentlyLand = false; // New state tracker for sprite swap
+        this.eventData = initializeEventData(); // Initialize random events
     }
 
     preload() {}
@@ -145,47 +211,63 @@ class NavigatorScene extends Phaser.Scene {
         const width = this.gameData.map_width;
         const height = this.gameData.map_height;
 
-        // --- 1. GAME ENVIRONMENT (Greyscale Theme) ---
-        this.add.graphics()
-            .fillStyle(0x000000, 1) // Ocean/Water Black
-            .fillRect(0, 0, width, height)
-            .fillStyle(0xCCCCCC, 1) // Land Gray
-            .fillTriangle(350, 750, 700, 750, 700, 0)
-            .fillCircle(380, 680, 50); 
+        // --- 1. GAME ENVIRONMENT (Coastal Map Graphics) ---
+        const mapGraphics = this.add.graphics();
         
-        // --- 2. PLAYER SPRITE ---
+        // Ocean/Water (Black)
+        mapGraphics.fillStyle(0x000000, 1).fillRect(0, 0, width, height);
+        
+        // Land Mass (Gray) - Drawing a more dynamic coastline
+        mapGraphics.fillStyle(0xCCCCCC, 1); 
+        mapGraphics.beginPath();
+        mapGraphics.moveTo(width / 2, height); // Start near bottom center
+        mapGraphics.lineTo(width, height);     // Bottom right
+        mapGraphics.lineTo(width, 0);          // Top right
+        mapGraphics.lineTo(300, 0);            // Coastline starts at x=300 top
+        mapGraphics.lineTo(250, 50);
+        mapGraphics.lineTo(200, 150);
+        mapGraphics.lineTo(150, 250);
+        mapGraphics.lineTo(200, 350);
+        mapGraphics.lineTo(250, 450);
+        mapGraphics.lineTo(350, 550);
+        mapGraphics.lineTo(400, 650);
+        mapGraphics.lineTo(width / 2, height); // Back to start
+        mapGraphics.closePath();
+        mapGraphics.fill();
+        
+        // Save the map texture for collision checks
+        this.mapTexture = mapGraphics.generateTexture('coastMap', width, height);
+
+        // --- 2. PLAYER SPRITE (Starts as Ship) ---
         this.ship = this.add.text(380, 700, '⛵', { fontSize: 36, fill: '#FFFFFF' }).setOrigin(0.5).setInteractive(); 
         this.physics.add.existing(this.ship); 
         this.ship.body.setDamping(true).setDrag(0.99).setMaxVelocity(100);
 
         // --- 3. UI/HUD ---
-        const macTextStyle = { fontSize: '15px', fill: '#000000', fontFamily: 'Courier New, monospace' }; // FONT SIZE ADJUSTED
+        const macTextStyle = { fontSize: '15px', fill: '#000000', fontFamily: 'Courier New, monospace' }; 
         
-        // HUD Box
         this.add.graphics()
             .fillStyle(0xDDDDDD, 1) 
             .lineStyle(2, 0x000000, 1)
-            .strokeRect(10, 10, 220, 60) // WIDTH ADJUSTED
+            .strokeRect(10, 10, 220, 60) 
             .fillRect(10, 10, 220, 60);
 
         this.supplyText = this.add.text(20, 15, 'Supplies: 100 (min:20)', macTextStyle);
         this.moraleText = this.add.text(20, 40, 'Morale: 100% (min:40)', macTextStyle);
         
-        // Feedback Box (Results of decision)
         this.feedbackText = this.add.text(width / 2, 70, '', 
-            { // FIX: Ensure word wrap for feedback message
-                fontSize: '18px', fill: '#000000', backgroundColor: '#FFFFFF', padding: { x: 5, y: 2 }, 
-                wordWrap: { width: width - 80 } // Wrap width to fit screen
-            })
+            { fontSize: '18px', fill: '#000000', backgroundColor: '#FFFFFF', padding: { x: 5, y: 2 }, 
+              wordWrap: { width: width - 80 } })
             .setOrigin(0.5).setDepth(5).setVisible(false);
 
         this.cursors = this.input.keyboard.createCursorKeys();
 
         // --- 5. EVENT LOCATIONS ---
-        eventData.forEach(event => {
+        this.eventData.forEach(event => {
             this.add.text(event.x, event.y, '⚓', { fontSize: 24, fill: '#FFFFFF' }).setOrigin(0.5);
         });
 
+        // --- 6. LOGBOOK PANEL ---
         this.logbookPanel = this.createLogbookWindow().setDepth(100).setVisible(false);
         this.updateHUD();
     }
@@ -209,7 +291,8 @@ class NavigatorScene extends Phaser.Scene {
         graphics.fillStyle(0xCCCCCC, 1); 
         graphics.fillRect(-panelW / 2 + 1, -panelH / 2 + 1, panelW - 2, 25);
         
-        this.logbookTitle = this.add.text(0, -panelH / 2 + 5, ' CABRILLO\'S LOGBOOK ', { fontSize: 16, fill: '#000000', fontFamily: 'Courier New, monospace' }).setOrigin(0.5);
+        // FIX: Moved title down slightly (y + 8) to prevent clipping
+        this.logbookTitle = this.add.text(0, -panelH / 2 + 8, ' CABRILLO\'S LOGBOOK ', { fontSize: 16, fill: '#000000', fontFamily: 'Courier New, monospace' }).setOrigin(0.5);
 
         const contentWidth = panelW - 40; 
         const textStyleBase = { fill: '#000000', fontFamily: 'Courier New, monospace' };
@@ -240,23 +323,47 @@ class NavigatorScene extends Phaser.Scene {
         }
 
         this.handleInput();
+        this.checkMovementState(); // New: Check if ship is on land or sea
         this.updateResources();
         this.checkEvents();
         this.checkGameOver();
     }
+    
+    // NEW: Sprite Swap Logic
+    checkMovementState() {
+        // Get the pixel data at the ship's current position
+        const pixel = this.sys.game.renderer.snapshotPixel(this.ship.x, this.ship.y);
+        
+        // The land color is 0xCCCCCC (Light Gray). The water color is 0x000000 (Black).
+        // Since the pixel data is RGBA, we check the red channel (first element of the array).
+        // If R > 0 (meaning not black), we assume it's on land.
+        const isOnLand = (pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0); 
+
+        if (isOnLand && !this.isCurrentlyLand) {
+            this.ship.setText('🐴'); // Change to horse
+            this.ship.setRotation(0); // Reset rotation to look like it's facing right/forward
+            this.isCurrentlyLand = true;
+        } else if (!isOnLand && this.isCurrentlyLand) {
+            this.ship.setText('⛵'); // Change back to ship
+            this.isCurrentlyLand = false;
+        }
+    }
 
     handleInput() {
+        const acceleration = this.isCurrentlyLand ? 150 : 200; // Slower on land
+        const rotationSpeed = this.isCurrentlyLand ? 150 : 100; // Steers quicker on land
+
         if (this.cursors.up.isDown) {
-            this.physics.velocityFromRotation(this.ship.rotation - Math.PI / 2, 200, this.ship.body.acceleration);
+            this.physics.velocityFromRotation(this.ship.rotation - Math.PI / 2, acceleration, this.ship.body.acceleration);
         } else {
             this.ship.body.setAcceleration(0);
         }
 
         if (this.cursors.left.isDown) {
-            this.ship.body.setAngularVelocity(-100);
+            this.ship.body.setAngularVelocity(-rotationSpeed);
             this.ship.rotation -= 0.05; 
         } else if (this.cursors.right.isDown) {
-            this.ship.body.setAngularVelocity(100);
+            this.ship.body.setAngularVelocity(rotationSpeed);
             this.ship.rotation += 0.05;
         } else {
             this.ship.body.setAngularVelocity(0);
@@ -265,8 +372,7 @@ class NavigatorScene extends Phaser.Scene {
     }
 
     updateResources() {
-        // Morale affects resource drain (increased difficulty)
-        let drainRate = 90 + (100 - this.gameData.morale); // Drain faster as morale drops (e.g., if morale is 0, drain is 90 + 100 = 190, so check 1/190)
+        let drainRate = 90 + (100 - this.gameData.morale); 
         
         if (Phaser.Math.Between(1, drainRate) === 1) { 
             this.gameData.supplies -= 1;
@@ -290,11 +396,17 @@ class NavigatorScene extends Phaser.Scene {
     checkEvents() {
         let nearestEvent = null;
         let minDistance = Infinity;
+        const shipIsLandEvent = this.isCurrentlyLand;
 
-        // --- RANDOMIZATION LOGIC ---
-        // Find the nearest UNTRIGGERED event location
-        eventData.forEach(event => {
+        // Find the nearest UNTRIGGERED event that matches the ship's current location type
+        this.eventData.forEach(event => {
             if (event.triggered) return;
+            
+            // Logic to restrict event trigger based on land/sea match
+            if (event.isLand !== shipIsLandEvent) {
+                 return; // Only trigger coastal events on water, and land events on land
+            }
+            
             let distance = Phaser.Math.Distance.Between(this.ship.x, this.ship.y, event.x, event.y);
 
             if (distance < minDistance) {
@@ -303,7 +415,6 @@ class NavigatorScene extends Phaser.Scene {
             }
         });
 
-        // Trigger the nearest event if the ship is within the trigger radius
         if (nearestEvent && minDistance < 50) {
             this.triggerEvent(nearestEvent);
         }
@@ -351,7 +462,6 @@ class NavigatorScene extends Phaser.Scene {
 
         this.updateHUD();
         
-        // FIX: Feedback text is now guaranteed to wrap
         this.feedbackText.setText(`[ ${choice.feedback} ]`).setVisible(true);
         this.time.delayedCall(3000, () => this.feedbackText.setVisible(false));
 
@@ -363,8 +473,8 @@ class NavigatorScene extends Phaser.Scene {
     checkGameOver() {
         if (this.gameData.supplies <= 0 || this.gameData.morale <= 0) {
             this.showEndScreen('GAME OVER', 'DEFEAT: The mission failed due to lack of supplies or crew unrest.');
-        } else if (eventData.every(e => e.triggered) && this.ship.y < 100) {
-            this.showEndScreen('MISSION SUCCESS', 'VICTORY: All ports discovered! Morale maintained and mission successful!');
+        } else if (this.eventData.every(e => e.triggered) && this.ship.y < 100) {
+            this.showEndScreen('MISSION SUCCESS', `VICTORY! All ${this.eventData.length} ports discovered! Final Morale: ${this.gameData.morale}%`);
         }
     }
 
@@ -404,6 +514,12 @@ const config = {
         arcade: {
             debug: false 
         }
+    },
+    // Required to check pixel color for land/sea swap
+    transparent: false, 
+    disableContextMenu: true, 
+    render: {
+        pixelArt: true 
     },
     scene: [IntroScene, NavigatorScene] 
 };
